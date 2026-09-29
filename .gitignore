@@ -1,0 +1,16 @@
+# pq
+.pq/
+
+# lokalne, nie publikujemy
+monitor/data/
+__pycache__/
+*.pyc
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+CONVENTIONS.md
+.github/copilot-instructions.md
+
+# snapshoty HTML, na zewnątrz tylko index.html
+*.html
+!index.html
