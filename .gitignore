@@ -1,8 +1,9 @@
 # pq
 .pq/
 
-# lokalne, nie publikujemy
-monitor/data/
+# lokalne, nie publikujemy (baza jest na GitHubie, zeby CI miala historie)
+monitor/data/*
+!monitor/data/jobs.db
 __pycache__/
 *.pyc
 AGENTS.md
