@@ -2,7 +2,8 @@ name: Odswiez oferty
 
 on:
   schedule:
-    - cron: "0 */6 * * *"
+    # 5/10/16 UTC = 07:00, 12:00, 18:00 czasu polskiego (lato; zimą godz. wcześniej)
+    - cron: "5 5,10,16 * * *"
   workflow_dispatch:
 
 permissions:
