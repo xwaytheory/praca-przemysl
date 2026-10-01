@@ -1,4 +1,4 @@
-"""Generuje index.html (styl jak istniejący przykład) ze wszystkich ofert w DB."""
+"""Generuje index.html — stonowany, spokojny layout (karty, ciepła paleta)."""
 from __future__ import annotations
 
 import html
@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from config import HTML_OUT
 
-# sekcje jak w przykładzie index.html
+# sekcje (branże) — tak jak w przykładzie index.html
 SECTIONS = (
     ("farmacja", "Farmacja, zdrowie, uroda"),
     ("sprzedaz", "Sprzedaż, obsługa klienta, handel"),
@@ -45,6 +45,194 @@ _W = {
     "pozostale": (),  # domyślny zrzut
 }
 
+_WD = ("pon", "wt", "śr", "czw", "pt", "sob", "ndz")
+
+_CSS = """
+:root {
+  --bg: #f7f4f2;
+  --surface: #ffffff;
+  --ink: #2b2622;
+  --ink-soft: #6f6762;
+  --ink-faint: #9a918b;
+  --line: #e7e0da;
+  --accent: #8a4f5c;
+  --accent-ink: #6d3b46;
+  --accent-wash: #f4ecec;
+  --radius: 14px;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+}
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.01em; }
+
+header {
+  background: linear-gradient(150deg, #8a4f5c 0%, #6d3b46 55%, #5b3039 100%);
+  color: #fdf8f7;
+  padding: 3rem 1.25rem 2.6rem;
+  text-align: center;
+}
+header h1 {
+  margin: 0 0 .5rem;
+  font-size: clamp(1.7rem, 4.5vw, 2.4rem);
+  font-weight: 600;
+}
+header .sub { margin: 0 auto; max-width: 42ch; opacity: .88; font-size: .95rem; }
+header .facts {
+  margin: 1.1rem 0 0;
+  font-size: .85rem;
+  opacity: .78;
+  letter-spacing: .02em;
+}
+
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  gap: .45rem;
+  padding: .7rem 1rem;
+  background: rgba(247, 244, 242, .92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.tab {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--accent-ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: .38rem .85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.tab:hover { border-color: var(--accent); color: var(--accent); }
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+main { max-width: 860px; margin: 0 auto; padding: 2rem 1.1rem 3.5rem; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+section + section, .tab-panel > section + section { margin-top: 2.4rem; }
+
+h2 {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  margin: 0 0 1rem;
+  font-size: 1.22rem;
+}
+h2::before {
+  content: "";
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateY(-.15rem);
+}
+.count { font-family: var(--sans); font-size: .82rem; font-weight: 600; color: var(--ink-faint); }
+
+.cards { display: flex; flex-direction: column; gap: .6rem; }
+.offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .4rem 1rem;
+  align-items: center;
+  padding: .95rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.offer:hover {
+  border-color: #d8c9c4;
+  box-shadow: 0 4px 16px rgba(60, 40, 40, .07);
+  transform: translateY(-1px);
+}
+.offer-title { margin: 0; font-size: 1.05rem; line-height: 1.35; }
+.offer-title a { color: inherit; text-decoration: none; }
+.offer-title a:hover { color: var(--accent); }
+.offer-title a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.offer-meta {
+  margin: .2rem 0 0;
+  font-size: .84rem;
+  color: var(--ink-soft);
+}
+.offer-meta .sep { color: var(--ink-faint); margin: 0 .45rem; }
+.offer-side {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  justify-self: end;
+}
+.pay { font-weight: 600; font-size: .92rem; color: var(--accent-ink); white-space: nowrap; }
+.cta {
+  font-size: .8rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--accent);
+  border: 1px solid #dfd0cb;
+  border-radius: 999px;
+  padding: .3rem .75rem;
+  white-space: nowrap;
+}
+.cta:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cta:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#nowe .offer { border-left: 3px solid var(--accent); }
+.gap {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  margin: 1.6rem 0 1rem;
+  color: var(--ink-faint);
+  font-size: .82rem;
+}
+.gap::before, .gap::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
+.empty {
+  padding: 1.1rem;
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-faint);
+  font-size: .9rem;
+  font-style: italic;
+}
+footer {
+  border-top: 1px solid var(--line);
+  padding: 1.8rem 1.25rem 2.5rem;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: .82rem;
+}
+footer strong { color: var(--ink-soft); font-weight: 600; }
+
+@media (max-width: 640px) {
+  .offer { grid-template-columns: 1fr; }
+  .offer-side { justify-self: start; margin-top: .5rem; }
+  header { padding: 2.2rem 1.1rem 2rem; }
+  h2 { font-size: 1.12rem; }
+}
+"""
+
 
 def _norm(s: str) -> str:
     s = (s or "").lower()
@@ -68,64 +256,67 @@ def _esc(s: str) -> str:
 def _host(url: str) -> str:
     try:
         h = urlparse(url).netloc.replace("www.", "")
-        return h or "link"
+        return h.split(":")[0] or "ogłoszenie"
     except Exception:
-        return "link"
+        return "ogłoszenie"
 
 
-def _pay(salary: str) -> str:
-    s = (salary or "").strip()
-    if not s:
-        return '<td class="pay none">—</td>'
-    return f'<td class="pay">{_esc(s)}</td>'
+def _fmt_date(value: str) -> str:
+    """'2026-09-28' -> '28.09' (z rokiem tylko dla poprzednich lat)."""
+    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", (value or "").strip())
+    if not m:
+        return ""
+    y, mo, d = (int(g) for g in m.groups())
+    try:
+        if date(y, mo, d).year != date.today().year:
+            return f"{d:02d}.{mo:02d}.{y}"
+    except ValueError:
+        return ""
+    return f"{d:02d}.{mo:02d}"
 
 
-def _link(url: str, source: str, external_id: str) -> str:
-    if not url:
-        return '<td class="link">—</td>'
-    label = f"{_host(url)} {external_id}" if external_id else _host(url)
-    if len(label) > 40:
-        label = label[:37] + "…"
+def _card(d: dict) -> str:
+    url = d.get("url", "")
+    title = _esc(d.get("title", ""))
+    company = _esc(d.get("company") or "")
+    meta: list[str] = []
+    if company and company != "—":
+        meta.append(company)
+    meta.append(_esc(_host(url)))
+    posted = _fmt_date(d.get("posted_at", ""))
+    if posted:
+        meta.append(posted)
+    deadline = _fmt_date(d.get("deadline", ""))
+    if deadline:
+        meta.append(f"termin {deadline}")
+    pay = _esc((d.get("salary_raw") or "").strip())
+    pay_html = f'<span class="pay">{pay}</span>' if pay else ""
+    cta = (
+        f'<a class="cta" href="{_esc(url)}" target="_blank" rel="noopener">Zobacz</a>'
+        if url
+        else ""
+    )
+    meta_html = '<span class="sep">·</span>'.join(meta)
+    title_html = (
+        f'<a href="{_esc(url)}" target="_blank" rel="noopener">{title}</a>'
+        if url
+        else title
+    )
     return (
-        f'<td class="link"><a href="{_esc(url)}" target="_blank" rel="noopener">'
-        f"{_esc(label)}</a></td>"
+        '      <article class="offer">\n'
+        '        <div>\n'
+        f'          <h3 class="offer-title">{title_html}</h3>\n'
+        f'          <p class="offer-meta">{meta_html}</p>\n'
+        "        </div>\n"
+        f'        <div class="offer-side">{pay_html}{cta}</div>\n'
+        "      </article>\n"
     )
 
 
-def _date_cell(value: str) -> str:
-    v = (value or "").strip()
-    if not v:
-        return '<td class="date none">—</td>'
-    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", v)
-    if m:
-        return f'<td class="date">{m.group(3)}.{m.group(2)}.{m.group(1)}</td>'
-    return f'<td class="date">{_esc(v)}</td>'
-
-
-def _table(items: list[dict], empty_msg: str) -> str:
-    parts = ['  <div class="table-wrap">\n    <table>\n']
-    parts.append(
-        "      <thead>\n"
-        "        <tr><th>Stanowisko</th><th>Pracodawca</th><th>Płaca</th>"
-        "<th>Data</th><th>Termin</th>"
-        "<th>Link do ogłoszenia</th></tr>\n"
-        "      </thead>\n"
-        "      <tbody>\n"
-    )
+def _cards(items: list[dict], empty_msg: str) -> str:
     if not items:
-        parts.append(f'        <tr><td colspan="6" class="empty">{empty_msg}</td></tr>\n')
-    for d in items:
-        title = _esc(d.get("title", ""))
-        company = _esc(d.get("company") or "—")
-        parts.append(
-            f"        <tr><td>{title}</td><td>{company}</td>"
-            f"{_pay(d.get('salary_raw', ''))}"
-            f"{_date_cell(d.get('posted_at', ''))}"
-            f"{_date_cell(d.get('deadline', ''))}"
-            f"{_link(d.get('url', ''), d.get('source', ''), d.get('external_id', ''))}</tr>\n"
-        )
-    parts.append("      </tbody>\n    </table>\n  </div>\n")
-    return "".join(parts)
+        return f'    <p class="empty">{_esc(empty_msg)}</p>\n'
+    return '    <div class="cards">\n' + "".join(_card(d) for d in items) + "    </div>\n"
 
 
 def render(
@@ -137,24 +328,29 @@ def render(
     by_day: dict[str, dict[str, list]] = {}
     new_items: list[dict] = []
     total = 0
+    today_iso = date.today().isoformat()
+    today_n = 0
     for r in rows:
         d = dict(r)
         if not d.get("title"):
             continue
-        day = ((d.get("posted_at") or d.get("first_seen_at") or "")[:10]) or "bez-daty"
+        pub = (d.get("posted_at") or d.get("first_seen_at") or "")[:10] or "bez-daty"
         sec = _section(d.get("title", ""))
-        by_day.setdefault(day, {sid: [] for sid, _ in SECTIONS})[sec].append(d)
+        by_day.setdefault(pub, {sid: [] for sid, _ in SECTIONS})[sec].append(d)
         if (d.get("source"), d.get("external_id")) in recent_ids:
             new_items.append(d)
+        if pub == today_iso:
+            today_n += 1
         total += 1
 
-    new_items.sort(key=lambda x: (x.get("posted_at") or "", _norm(x.get("title", ""))), reverse=True)
+    new_items.sort(
+        key=lambda x: (x.get("posted_at") or "", _norm(x.get("title", ""))), reverse=True
+    )
     today = date.today().strftime("%d.%m.%Y")
 
     day_keys = sorted((k for k in by_day if k != "bez-daty"), reverse=True)
     if "bez-daty" in by_day:
         day_keys.append("bez-daty")
-    _WD = ("pon", "wt", "śr", "czw", "pt", "sob", "ndz")
 
     def _day_label(k: str) -> str:
         if k == "bez-daty":
@@ -165,192 +361,58 @@ def render(
         except ValueError:
             return k
 
-    nav = [
+    tabs = [
         f'<button type="button" class="tab active" data-t="nowe">Nowe ({len(new_items)})</button>'
     ]
     for k in day_keys:
         n = sum(len(v) for v in by_day[k].values())
-        nav.append(
-            f'<button type="button" class="tab" data-t="d-{k}">{_esc(_day_label(k))} ({n})</button>'
+        tabs.append(
+            f'<button type="button" class="tab" data-t="d-{_esc(k)}">'
+            f"{_esc(_day_label(k))} ({n})</button>"
         )
-    nav = "\n  ".join(nav)
+    nav = "\n  ".join(tabs)
 
-    parts: list[str] = []
-    parts.append(f"""<!DOCTYPE html>
+    parts: list[str] = [f"""<!DOCTYPE html>
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Oferty pracy w Przemyślu — dla kobiety</title>
-<style>
-  :root {{
-    --pink: #d63384;
-    --pink-soft: #fce4f0;
-    --bg: #faf7f9;
-    --card: #ffffff;
-    --text: #2b2b2b;
-    --muted: #777;
-    --border: #eee;
-  }}
-  * {{ box-sizing: border-box; }}
-  body {{
-    margin: 0;
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.5;
-  }}
-  header {{
-    background: linear-gradient(135deg, var(--pink), #a21caf);
-    color: #fff;
-    padding: 2.2rem 1.5rem 1.8rem;
-    text-align: center;
-  }}
-  header h1 {{ margin: 0 0 .4rem; font-size: 1.7rem; }}
-  header p {{ margin: 0; opacity: .9; font-size: .95rem; }}
-  nav {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: .5rem;
-    justify-content: center;
-    padding: 1rem;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }}
-  nav .tab {{
-    text-decoration: none;
-    color: var(--pink);
-    background: var(--pink-soft);
-    border: none;
-    font-family: inherit;
-    cursor: pointer;
-    padding: .35rem .8rem;
-    border-radius: 999px;
-    font-size: .85rem;
-    font-weight: 600;
-  }}
-  nav .tab.active {{
-    background: linear-gradient(135deg, var(--pink), #a21caf);
-    color: #fff;
-  }}
-  .tab-panel {{ display: none; }}
-  .tab-panel.active {{ display: block; }}
-  main {{ max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }}
-  section {{ margin-bottom: 2.5rem; }}
-  h2 {{
-    font-size: 1.25rem;
-    color: var(--pink);
-    border-left: 5px solid var(--pink);
-    padding-left: .6rem;
-    margin-bottom: 1rem;
-  }}
-  #nowe h2 {{ background: var(--pink-soft); border-radius: 0 8px 8px 0; padding: .5rem .6rem; }}
-  .count {{ font-size: .85rem; color: var(--muted); font-weight: 600; }}
-  .gap {{
-    margin: 1.4rem 0 .7rem;
-    padding-top: .9rem;
-    border-top: 2px dashed var(--border);
-    text-align: center;
-    color: var(--muted);
-    font-size: .8rem;
-    font-style: italic;
-  }}
-  .table-wrap {{
-    overflow-x: auto;
-    background: var(--card);
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,.06);
-  }}
-  table {{ border-collapse: collapse; width: 100%; font-size: .9rem; }}
-  thead {{ background: var(--pink-soft); }}
-  th {{
-    text-align: left;
-    padding: .75rem .8rem;
-    color: #7b1048;
-    font-size: .8rem;
-    text-transform: uppercase;
-    letter-spacing: .03em;
-  }}
-  td {{ padding: .7rem .8rem; border-top: 1px solid var(--border); vertical-align: top; }}
-  tbody tr:hover {{ background: #fff5fa; }}
-  .pay {{ font-weight: 700; color: var(--pink); white-space: nowrap; }}
-  .pay.none {{ font-weight: 400; color: var(--muted); }}
-  .date {{ white-space: nowrap; font-size: .85rem; }}
-  .date.none {{ color: var(--muted); }}
-  .link a {{
-    color: var(--pink);
-    font-weight: 600;
-    text-decoration: none;
-    border-bottom: 1px dotted var(--pink);
-    word-break: break-all;
-  }}
-  .link a:hover {{ background: var(--pink-soft); }}
-  .note {{
-    background: #fff8e6;
-    border-left: 4px solid #eab308;
-    padding: .7rem 1rem;
-    border-radius: 0 8px 8px 0;
-    font-size: .85rem;
-    color: #71580a;
-    margin-top: 1rem;
-  }}
-  .empty {{
-    color: var(--muted);
-    font-size: .9rem;
-    padding: .8rem;
-  }}
-  footer {{
-    text-align: center;
-    font-size: .8rem;
-    color: var(--muted);
-    padding: 1.5rem;
-    border-top: 1px solid var(--border);
-  }}
-  @media (max-width: 700px) {{
-    table {{ font-size: .82rem; }}
-    th, td {{ padding: .5rem .5rem; }}
-  }}
-</style>
+<meta name="description" content="Aktualne oferty pracy w Przemyślu dla kobiety — sprzedaż, gastronomia, farmacja, produkcja. Bez pracy biurowej, budżetówki i administracji.">
+<meta name="theme-color" content="#8a4f5c">
+<title>Oferty pracy w Przemyślu</title>
+<style>{_CSS}</style>
 </head>
 <body>
 
 <header>
   <h1>Oferty pracy w Przemyślu</h1>
-  <p>Pełna lista direct-linków dla kobiety · bez prac biurowych, budżetówki, państwówki i administracji · {today}</p>
+  <p class="sub">Praca dla kobiety — sprzedaż, obsługa klienta, gastronomia, uroda
+     i lekka produkcja. Bez biura, budżetówki i administracji.</p>
+  <p class="facts">{total} ofert · {today_n} z dzisiaj · odświeżono {today}</p>
 </header>
 
 <nav>
-{nav}
+  {nav}
 </nav>
 
 <main>
-""")
 
-    parts.append('<section id="nowe" class="tab-panel active">\n')
-    parts.append(
-        f'  <h2>Nowe oferty <span class="count">({len(new_items)})</span></h2>\n'
-    )
-    today_iso = date.today().isoformat()
+<section id="nowe" class="tab-panel active">
+  <h2>Nowe oferty <span class="count">({len(new_items)})</span></h2>
+"""]
 
-    def _day(d: dict) -> str:
-        return (d.get("posted_at") or d.get("first_seen_at") or "")[:10]
-
-    fresh = [d for d in new_items if _day(d) == today_iso]
-    older = [d for d in new_items if _day(d) != today_iso]
+    fresh = [d for d in new_items if (d.get("posted_at") or d.get("first_seen_at") or "")[:10] == today_iso]
+    older = [d for d in new_items if d not in fresh]
     if fresh:
-        parts.append(_table(fresh, ""))
+        parts.append(_cards(fresh, ""))
     if older:
         if fresh:
             parts.append(
-                f'  <p class="gap">starsze niż dzisiaj '
-                f"({len(older)}) — z ostatnich 3 dni</p>\n"
+                f'  <p class="gap">z ostatnich dni ({len(older)})</p>\n'
             )
-        parts.append(_table(older, ""))
-    if not fresh and not older:
-        parts.append(_table(new_items, "Brak nowych ofert w ostatnich 3 dniach."))
+        parts.append(_cards(older, ""))
+    if not new_items:
+        parts.append(_cards([], "Brak nowych ofert od ostatniego skanu."))
     parts.append("</section>\n\n")
 
     for k in day_keys:
@@ -363,15 +425,16 @@ def render(
                 f'  <section>\n    <h2>{_esc(label)} '
                 f'<span class="count">({len(items)})</span></h2>\n'
             )
-            parts.append(_table(items, ""))
+            parts.append(_cards(items, ""))
             parts.append("  </section>\n")
         parts.append("</div>\n\n")
 
     parts.append(f"""</main>
 
 <footer>
-  Zebrane {today} · {total} ofert · wszystkie linki prowadzą bezpośrednio do ogłoszenia<br>
-  Wyłączone: praca biurowa, budżetówka, państwówka, administracja, urzędy miast
+  <p><strong>Oferty pracy w Przemyślu</strong> · {total} ofert · {today}</p>
+  <p>Sprawdzane automatycznie kilka razy dziennie. Każdy link prowadzi prosto do ogłoszenia.<br>
+  Pominięte: praca biurowa, budżetówka, państwówka, administracja, urzędy.</p>
 </footer>
 
 <script>
@@ -381,6 +444,7 @@ def render(
       document.querySelectorAll('.tab-panel').forEach(function (p) {{ p.classList.remove('active'); }});
       b.classList.add('active');
       document.getElementById(b.dataset.t).classList.add('active');
+      window.scrollTo({{ top: 0, behavior: 'smooth' }});
     }});
   }});
 </script>
