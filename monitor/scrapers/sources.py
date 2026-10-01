@@ -576,10 +576,17 @@ def scrape_rocketjobs() -> list[dict]:
 
 @register("manual")
 def scrape_manual() -> list[dict]:
-    """Oferty wklejone recznie do monitor/data/manual.txt (np. z grup Facebook).
-    Facebook nie da sie scrapowac (logowanie + boty), wiec wklejasz sam.
-    Format jednej linii:  Tytuł | Firma | URL  (reszta opcjonalna)"""
+    """Oferty wklejone recznie do monitor/data/manual.txt (np. z grup Facebook, z
+    praca.pl, z ogloszeniaprzemysl.pl). Tamtego serwisu nie da sie skanowac, wiec
+    wklejasz sam.
+
+    Akceptowane formaty jednej linii (od najprostszego):
+      https://link-do-ogloszenia
+      Tytul | https://link-do-ogloszenia
+      Tytul | Firma | https://link-do-ogloszenia | widełki
+    """
     import os
+    from datetime import date
 
     path = os.path.join(os.path.dirname(__file__), "..", "data", "manual.txt")
     if not os.path.exists(path):
@@ -590,9 +597,24 @@ def scrape_manual() -> list[dict]:
         if not line or line.startswith("#"):
             continue
         parts = [p.strip() for p in line.split("|")]
-        if len(parts) < 2 or not parts[1]:
+        url = ""
+        for p in reversed(parts):
+            if p.startswith("http"):
+                url = p
+                break
+        pay = parts[3] if len(parts) > 3 and not parts[3].startswith("http") else ""
+        rest = [p for p in parts[: parts.index(url)] if p] if url else [p for p in parts if p]
+        if not rest:
+            # sam link -> tytul z ostatniego segmentu sluga
+            slug = url.rstrip("/").split("/")[-1].split("?")[0]
+            slug = re.sub(r",?oferta,\d+$", "", slug, flags=re.I)  # praca.pl: slug,oferta,ID
+            slug = re.sub(r"\.\w{2,5}$", "", slug)
+            title = re.sub(r"[-_+]+", " ", slug).strip()
+            rest = [title]
+        title = rest[0]
+        company = rest[1] if len(rest) > 1 else ""
+        if not title:
             continue
-        title, company, url = parts[0], parts[1], (parts[2] if len(parts) > 2 else "")
         jobs.append(
             {
                 "external_id": "manual:" + h_id(title + "|" + company),
@@ -600,7 +622,7 @@ def scrape_manual() -> list[dict]:
                 "company": company,
                 "city": "Przemyśl",
                 "url": url,
-                "salary_raw": parts[3] if len(parts) > 3 else "",
+                "salary_raw": pay,
                 "posted_at": date.today().isoformat(),
                 "deadline": "",
             }
