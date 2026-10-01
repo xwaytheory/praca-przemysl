@@ -1,4 +1,4 @@
-"""Filtr ofert: kobiety / zero biura, budżetówki, państwowki, administracji."""
+"""Filtr ofert: tylko geografia (Przemysl/okolice, bez zdalnej i za granica). Zero selekcji zawodowej."""
 import unicodedata
 
 from config import CITY_OK, EXCLUDE, INCLUDE, WHITELIST_ON

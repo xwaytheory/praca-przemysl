@@ -484,3 +484,125 @@ def scrape_kariera() -> list[dict]:
         pass
 
     return jobs
+
+
+@register("rocketjobs")
+def scrape_rocketjobs() -> list[dict]:
+    """Rocketjobs (Next.js): oferty siedza w escaped JSON w payloadzie strony.
+    Jedyne zrodlo, ktore podaje realne widełki + date publikacji."""
+    import json
+    from datetime import datetime
+
+    base = "https://rocketjobs.pl/oferty-pracy/przemysl"
+    jobs: list[dict] = []
+    seen: set[str] = set()
+    units = {"month": "mies.", "hour": "godz.", "day": "dzien", "year": "rok"}
+
+    def offers(html: str) -> list[dict]:
+        m = re.search(r'\\"offers\\":\[', html)
+        if not m:
+            return []
+        start = m.end() - 1
+        depth = 0
+        for j in range(start, len(html)):
+            if html[j] == "[":
+                depth += 1
+            elif html[j] == "]":
+                depth -= 1
+                if depth == 0:
+                    raw = html[start : j + 1].replace('\\"', '"').replace("\\\\", "\\")
+                    try:
+                        return json.loads(raw)
+                    except Exception:
+                        return []
+        return []
+
+    for page in (1, 2, 3):
+        html = get(base if page == 1 else f"{base}?page={page}")
+        rows = offers(html)
+        if not rows:
+            break
+        for o in rows:
+            slug = o.get("slug") or ""
+            url = f"https://rocketjobs.pl/oferta-pracy/{slug}" if slug else ""
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            title = clean(o.get("body") or o.get("title") or "")
+            if not title:
+                continue
+            pay = ""
+            for et in o.get("employmentTypes") or []:
+                if et.get("currencySource") != "original":
+                    continue  # konwersja USD wlasna - nie pokazujemy
+                lo, hi = et.get("from"), et.get("to")
+                if lo is None and hi is None:
+                    continue
+                unit = units.get(et.get("unit") or "", "")
+                cur = et.get("currency") or "zł"
+                if lo is not None and hi is not None and lo != hi:
+                    pay = f"{lo:,.0f}–{hi:,.0f} {cur}".replace(",", " ") + (f"/{unit}" if unit else "")
+                elif lo is not None:
+                    pay = f"od {lo:,.0f} {cur}".replace(",", " ") + (f"/{unit}" if unit else "")
+                else:
+                    pay = f"do {hi:,.0f} {cur}".replace(",", " ") + (f"/{unit}" if unit else "")
+                if et.get("gross"):
+                    pay += " brutto"
+                break
+            posted = ""
+            raw = o.get("publishedAt") or o.get("lastPublishedAt") or ""
+            if raw:
+                try:
+                    posted = datetime.fromisoformat(str(raw).replace("Z", "+00:00")).date().isoformat()
+                except Exception:
+                    posted = str(raw)[:10]
+            deadline = ""
+            if o.get("expiredAt"):
+                deadline = str(o["expiredAt"])[:10]
+            jobs.append(
+                {
+                    "external_id": o.get("guid") or h_id(url),
+                    "title": title,
+                    "company": clean(o.get("companyName") or ""),
+                    "city": clean(o.get("city") or "Przemyśl"),
+                    "url": url,
+                    "salary_raw": pay,
+                    "posted_at": posted,
+                    "deadline": deadline,
+                }
+            )
+    return jobs
+
+
+@register("manual")
+def scrape_manual() -> list[dict]:
+    """Oferty wklejone recznie do monitor/data/manual.txt (np. z grup Facebook).
+    Facebook nie da sie scrapowac (logowanie + boty), wiec wklejasz sam.
+    Format jednej linii:  Tytuł | Firma | URL  (reszta opcjonalna)"""
+    import os
+
+    path = os.path.join(os.path.dirname(__file__), "..", "data", "manual.txt")
+    if not os.path.exists(path):
+        return []
+    jobs: list[dict] = []
+    for line in open(path, encoding="utf-8").read().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) < 2 or not parts[1]:
+            continue
+        title, company, url = parts[0], parts[1], (parts[2] if len(parts) > 2 else "")
+        jobs.append(
+            {
+                "external_id": "manual:" + h_id(title + "|" + company),
+                "title": title,
+                "company": company,
+                "city": "Przemyśl",
+                "url": url,
+                "salary_raw": parts[3] if len(parts) > 3 else "",
+                "posted_at": date.today().isoformat(),
+                "deadline": "",
+            }
+        )
+    return jobs

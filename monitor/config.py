@@ -1,57 +1,28 @@
-# Monitor pracy w Przemyślu — oferta dla kobiety.
-# Zero: biuro, budżetówka, państwówka, administracja, urzędy.
+# Monitor pracy w Przemyślu — wszystkie oferty, bez selekcji „dla kobiety".
+# Jeden warunek: miejsce pracy w Przemyślu / okolicach.
 # Uruchomienie: python monitor/run.py → skan + index.html
 
 CITY_OK = ("przemyśl", "przemy", "przemysl")
 
-# TWARDE ODRZUCENIA — biuro / budżetówka / państwówka / administracja / za granicę
+# ODRZUCENIA — tylko geografia: praca zdalna, za granicą, relokacja w inne miasto.
+# zero selekcji zawodowej (nie ma „dla kobiety”, nie ma „bez biura”).
 EXCLUDE = (
-    # biuro i administracja
-    "biurow", "administracj", "urzędnik", "urzednik", "referent", "sekretark",
-    "asystent", "kadrow", "księgow", "ksiegow", "fakturzyst", "samorząd", "samorzad",
-    "kadr ", "rekrutacj", "hr ", "płacowe", "placowe", "wynagrodzen",
-    "biuro rachunk", "call center", "pracownik biura", "sprzedaz biurow",
-    # urzędy / instytucje publiczne / budżetówka / państwówka
-    "urząd", "urzad", "urzedu", "urzędzie", "starostw", "gminy ", "gminie ",
-    "gminna ", "gminny", "ministerstw", "instytucja publiczn", "jednostka samorz",
-    "urząd miasta", "urzedzie miasta", "wydzial", "wydziału",
-    "szpital", "przychodni", "pogotow", "sanitarnepid", "sanitarno-epid",
-    "państwow", "panstwow", "budzetowk", "budżetówk",
-    "policj", "straż poż", "straz poz", "straż miejsk", "wojsk", "mundurow",
-    "nauczyciel", "przedszkol", "szkoł", "szkol", "uczeln", "uniwersytet",
-    "bibliotek", "muzeum", "teatr",
-    "nfz", " zus", "zus ", "krus", "arimr", "inspektorat", "sąd ", "sad ",
-    "prokuratur", "kancelari", "bank", "ubezpieczen",
-    "mzk", "mpgk", "pwik", "zuk ", "poczta polsk", "pkp ",
-    "spółk komunaln", "spolka komunaln", "komunaln",
-    # zamówienia publiczne / urząd / inspektor biurowy
-    "zamowien publicz", "zamówień publicz", "zamowienia publiczn",
-    "inwestycji i zamowien", "inwestycji i zamówień", "uron",
-    # analityka / IT / projektowe
-    "analityk", "analityczk", "analyst", "data anal",
-    "dzialu projektowego", "projektow",
-    # biurowe sales / finanse / B2B
-    "biznesow", "b2b", "finansow", "business development", "bdm",
-    "nieruchomos",
-    "miejscowosciach pols", "miejscowościach pols",
-    # zdalne / hybrydowe biuro
-    "zdaln", "home office", "praca zdalna", "hybrydow",
-    "programist", "grafik ", "tester ", "software", "developer",
-    # IT / korpo
-    "data scien", "ux ", "product own", "project manag",
-    # agencje zagraniczne / praca poza Polska
+    # zdalna / hybrydowa
+    "zdaln", "home office", "praca zdalna", "hybrydow", "remote", "praca w zdal",
+    # za granicą / agencje zagraniczne
     "gmbh", "niemieckim", "niemieck", "arbeit", "ausland", "holland",
     "holandi", "niderland", "belgi", "niemczech", "czechy",
     "słowacj", "slowacj", "anglii", "wielkiej brytanii", "irlandi", "norwegi",
-    "szwecji", "francji", "hiszpani", "portugalii", "za granicą", "za granica",
+    "szwecji", "francji", "hiszpanii", "portugalii", "za granicą", "za granica",
     "wyjazd", "niemcy",
     "(de)", "-de)", "-de ", "(nl)", "-nl)", "(be)", "-be)", "(at)", "-at)",
     "(cz)", "-cz)", "(sk)", "-sk)", "(fr)", "-fr)", "(gb)", "-uk)",
     "hohenm", "zusmarsh", "cm-ft-de", "as-de",
 )
 
-# BIAŁA LISTA — praca raczej dla kobiety (tytuł musi trafić w ≥1 słowo)
-WHITELIST_ON = True
+# BIAŁA LISTA — wyłączona. Zostawiona jako dokumentacja, co kiedyś było odfiltrowywane.
+# Włączenie (WHITELIST_ON = True) znów przepuści tylko stanowiska "typowo kobiece".
+WHITELIST_ON = False
 INCLUDE = (
     # sprzedaż / sklep / obsługa klienta
     "sprzedaz", "sprzedaż", "sprzedawc", "ekspedient", "kasjer", "kasjerka",
@@ -101,6 +72,8 @@ SOURCES = (
     "przemyslpraca",
     "ogloszeniaprz",
     "kariera",
+    "rocketjobs",
+    "manual",
 )
 
 PRACAPL_KEYWORDS = (

@@ -15,7 +15,7 @@ SECTIONS = (
     ("farmacja", "Farmacja, zdrowie, uroda"),
     ("sprzedaz", "Sprzedaż, obsługa klienta, handel"),
     ("gastronomia", "Gastronomia, hotelarstwo, usługi"),
-    ("pozostale", "Magazyn, produkcja, opiekun i pozostałe"),
+    ("pozostale", "Pozostałe zawody i branże"),
 )
 
 _W = {
@@ -388,12 +388,14 @@ def _row(d: dict, badge: bool = False) -> str:
     )
     posted = (d.get("posted_at") or "").strip()
     seen = (d.get("first_seen_at") or "")[:10]
+    dl = _fmt_date(d.get("deadline", ""))
+    dl_html = f'<small> do {dl}</small>' if dl else ""
     if posted:
-        d_lbl, d_html = "Opublikowano", _esc(_fmt_date(posted))
+        d_lbl, d_html = "Opublikowano", _esc(_fmt_date(posted)) + dl_html
     else:
         d_lbl = "Znaleziono"
         d_html = (
-            f'{_esc(_fmt_date(seen))}<small> (bez daty)<span class="sr-only"> — portal nie udostępnił '
+            f'{_esc(_fmt_date(seen))}{dl_html}<small> (bez daty)<span class="sr-only"> — portal nie udostępnił '
             "daty publikacji, to data znalezienia oferty</span></small>"
         )
     host = _esc(_host(url))
@@ -585,18 +587,18 @@ def render(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Praca w Przemyślu bez biura i urzędów — {total} ofert, {today_n} opublikowanych dziś. Sprzedaż, obsługa klienta, gastronomia, uroda, magazyn. Link prosto do ogłoszenia.">
+<meta name="description" content="Aktualne oferty pracy w Przemyślu — {total} ofert, {today_n} opublikowanych dziś. Wszystkie zawody, bez selekcji. Link prosto do ogłoszenia.">
 <meta name="theme-color" content="#75424e">
-<title>Praca w Przemyślu bez biura i urzędów — {total} ofert</title>
+<title>Praca w Przemyślu — {total} ofert</title>
 <style>{_CSS}</style>
 </head>
 <body>
 <a class="skip" href="#m">Pomiń do ofert</a>
 
 <header>
-  <h1>Praca w Przemyślu bez biura i urzędów</h1>
-  <p class="sub">Oferty pracy w Przemyślu bez biura, urzędów i budżetówki.
-     Klik w tytuł — otwiera ogłoszenie.</p>
+  <h1>Praca w Przemyślu</h1>
+  <p class="sub">Wszystkie oferty z Przemyśla i okolic — bez selekcji zawodów.
+     Klik w tytuł, aby otworzyć ogłoszenie.</p>
   <p class="facts">{_esc(facts)}</p>
 </header>
 
@@ -683,7 +685,7 @@ def render(
   <p><strong>{total} ofert</strong> · sprawdzone {scan or date.today().isoformat()}</p>
   <p>{legend}</p>
   <p>Oferty znikają z portali po kilku dniach — klikaj od razu, nie odkładaj na później.</p>
-  <p>Pominięte: praca biurowa, budżetówka, państwówka, administracja, urzędy.</p>
+  <p>Pominięte tylko praca zdalna i ogłoszenia spoza Polski. Zero selekcji zawodów.</p>
 </footer>
 
 <script>
