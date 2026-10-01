@@ -104,7 +104,11 @@ def main() -> int:
             (r["source"], r["external_id"])
             for r in store.recent_jobs(con, since=prev_scan)
         }
-        out = render.render(active, recent_ids=recent_ids)
+        out = render.render(
+            active,
+            recent_ids=recent_ids,
+            scan_at=store.get_meta(con, "last_scan_at") or "",
+        )
         print(f"HTML: {out}  ({len(active)} ofert, {len(recent_ids)} nowych)")
 
     store.set_meta_now(con, "last_scan_at")
