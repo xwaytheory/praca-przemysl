@@ -72,7 +72,7 @@ SOURCES = (
     "przemyslpraca",
     "ogloszeniaprz",
     "kariera",
-    "rocketjobs",
+    # "rocketjobs",  # wylaczony 01.10 - zasypywal liste (m.in. ankieterzy, docieplenia, serwis)
     "manual",
 )
 
