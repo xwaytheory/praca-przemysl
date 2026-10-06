@@ -1,3 +1,4 @@
+import re
 import sqlite3
 from pathlib import Path
 
@@ -33,7 +34,7 @@ def open_db(path: str | None = None) -> sqlite3.Connection:
         "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)"
     )
     cols = {r[1] for r in con.execute("PRAGMA table_info(jobs)")}
-    for c in ("posted_at", "deadline"):
+    for c in ("posted_at", "deadline", "misses"):
         if c not in cols:
             con.execute(f"ALTER TABLE jobs ADD COLUMN {c} TEXT DEFAULT ''")
     con.commit()
@@ -64,6 +65,7 @@ def upsert(con: sqlite3.Connection, source: str, job: dict) -> bool:
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), 1, 'active')
            ON CONFLICT(source, external_id) DO UPDATE SET
              last_seen_at = datetime('now'),
+             misses = 0,
              title = excluded.title,
              company = excluded.company,
              url = excluded.url,
@@ -86,17 +88,71 @@ def upsert(con: sqlite3.Connection, source: str, job: dict) -> bool:
     return cur.rowcount == 1
 
 
-def mark_expired(con: sqlite3.Connection, source: str, present_ids: list[str]) -> int:
+DEAD_AFTER_MISSES = 2  # ile kolejnych skanow ogloszenie zniknac musi, zanim sprawdzimy link
+
+
+def mark_missed(con: sqlite3.Connection, source: str, present_ids: list[str]) -> int:
+    """Nie ubijamy od razu: liczymy pominięcia. Wygaśnięcie potwierdza probe linku.
+
+    Każdy skraper zwraca tylko podzbiór listy (jedna strona, własne słowa kluczowe),
+    wiec "nie widziałem w tym skanie" != "oferta zniknęła"."""
     if not present_ids:
-        return 0
+        return 0  # skraper nic nie zwrócił -> nie ruszamy statusów
     placeholders = ",".join("?" * len(present_ids))
     cur = con.execute(
-        f"""UPDATE jobs SET status = 'expired', is_new = 0
-            WHERE source = ? AND status IN ('active', 'notified')
+        f"""UPDATE jobs SET misses = CAST(COALESCE(misses, 0) AS INTEGER) + 1
+            WHERE source = ? AND status = 'active'
               AND external_id NOT IN ({placeholders})""",
         [source, *present_ids],
     )
     return cur.rowcount
+
+
+def dead_candidates(con: sqlite3.Connection, limit: int = 80) -> list[sqlite3.Row]:
+    return con.execute(
+        """SELECT * FROM jobs
+           WHERE status = 'active' AND CAST(COALESCE(misses, 0) AS INTEGER) >= ?
+           ORDER BY last_seen_at LIMIT ?""",
+        (DEAD_AFTER_MISSES, limit),
+    ).fetchall()
+
+
+def expire(con: sqlite3.Connection, source: str, external_id: str) -> None:
+    con.execute(
+        "UPDATE jobs SET status = 'expired', is_new = 0 WHERE source = ? AND external_id = ?",
+        (source, external_id),
+    )
+
+
+def touch(con: sqlite3.Connection, source: str, external_id: str) -> None:
+    """Oferta zniknela z listy, ale link zyje -> zostaje i zerujemy licznik."""
+    con.execute(
+        """UPDATE jobs SET misses = 0, last_seen_at = datetime('now')
+           WHERE source = ? AND external_id = ?""",
+        (source, external_id),
+    )
+
+
+DEAD_MARKS = (
+    "oferta zakończona", "oferta zakończyl", "oferta nieaktywna", "ogłoszenie nieaktywne",
+    "nie istnieje", "wygasła", "wygasla", "strona nie istnieje", "oferta usunięta",
+)
+
+
+def probe_alive(url: str) -> bool:
+    """Czy oferta wciaz istnieje? Blad sieci = wierzymy, ze zyje (nie ubijamy na slepo)."""
+    if not url:
+        return False
+    try:
+        from curl_cffi import requests as creq
+
+        r = creq.get(url, impersonate="chrome", timeout=20)
+    except Exception:
+        return True
+    if r.status_code >= 400:
+        return False
+    low = re.sub(r"<[^>]+>", " ", (r.text or "")[:120000]).lower()
+    return not any(k in low for k in DEAD_MARKS)
 
 
 def new_jobs(con: sqlite3.Connection) -> list[sqlite3.Row]:

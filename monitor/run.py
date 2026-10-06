@@ -79,13 +79,31 @@ def main() -> int:
                 job["company"] = DEFAULT_COMPANY.get(name, "Pracodawca nie podany")
             if store.upsert(con, name, job):
                 new += 1
-        store.mark_expired(con, name, present)
+        store.mark_missed(con, name, present)
         con.commit()
 
         total_fetched += len(jobs)
         total_kept += len(kept)
         total_new += new
         print(f"  [ok   ] {name:16} pobrane={len(jobs):4}  po filtrach={len(kept):4}  nowe={new:4}")
+
+    # --- drugi brak na liscie -> sprawdzamy link, dopiero potem "expired" ---
+    dead = store.dead_candidates(con)
+    if dead:
+        revived = killed = 0
+        for job in dead:
+            if store.probe_alive(job["url"]):
+                store.touch(con, job["source"], job["external_id"])
+                revived += 1
+            else:
+                store.expire(con, job["source"], job["external_id"])
+                killed += 1
+        con.commit()
+        print(
+            f"  [weryfikacja] podejrzane o znikniecie: {len(dead)} | "
+            f"nadal zyje (zostaje na stronie): {revived} | faktycznie wygasle: {killed}"
+        )
+        print()
 
     new_rows = store.new_jobs(con)
     print()
